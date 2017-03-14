@@ -1,0 +1,17 @@
+{
+  "name": "cdl-gn-parser",
+  "version": "1.0.0",
+  "description": "Solution for CDL problem",
+  "main": "index.js",
+  "scripts": {
+    "test": "node logStats.js"
+  },
+  "keywords": [
+    "cdl",
+    "gn",
+    "parser",
+    "apache"
+  ],
+  "author": "George Neacsu",
+  "license": "UNLICENSED"
+}

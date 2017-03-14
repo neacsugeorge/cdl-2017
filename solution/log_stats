@@ -1,0 +1,214 @@
+#!/usr/bin/nodejs
+
+const fs = require('fs');
+const readline = require('readline');
+
+const DEBUG = parseInt(process.env.CDL_DEBUG);
+
+var params = {
+    file: '',
+    start: false,
+    end: false,
+    success: '2XX',
+    interval: 1,
+    debug: isNaN(DEBUG) ? 0 : DEBUG 
+};
+
+function debug () {
+    if (!params.debug) return;
+
+    if (arguments[0] > params.debug) return;
+    arguments[0] = '';
+
+    console.log.apply({}, arguments);
+}
+
+function parseArgs() {
+    let {argv} = process;
+    if (argv.length < 3) {
+        console.log('400 - have a nice day');
+        return process.exit();
+    }
+    
+    const need = ['start', 'end', 'interval', 'success'];
+
+    argv.shift();
+    argv.shift();
+
+    for (let i = 0; i < need.length; i++) {
+        let pos = argv.indexOf('--' + need[i]);
+        if (pos == -1) continue;
+
+        params[need[i]] = argv[pos +1];
+        argv.splice(pos, 2);
+    }
+
+    if (argv.length < 1) {
+        console.log('400 - have a nice day');
+        return process.exit();
+    }
+
+    params.file = argv[0];
+}
+
+parseArgs();
+debug(5, process.argv);
+
+debug(5, params);
+
+//Prepare params
+if (params.start) params.start = new Date(params.start + ':00');
+if (params.end) params.end = new Date(params.end + ':00');
+params.interval = parseInt(params.interval);
+if (typeof params.success == 'string') {
+    var split = params.success.split(',');
+    var pattern = '';
+
+    for (let i = 0; i < split.length; i++) {
+        pattern += '(' + split[i].replace(/X/g, '[0-9]') + ')|';
+    }
+
+    pattern = pattern.substr(0, pattern.length -1);
+    params.success = new RegExp(pattern);
+}
+
+//First group - timestamp
+//Second group - request
+//Third group - status code
+const theMightyPattern = /(([0-9]{2}\/[a-zA-Z]{3,4}\/[0-9]{4}\:([0-9\:]{2,3}){2}[0-9]{2}))|(GET\s\/[a-zA-Z0-9\-\_\/]+\.[a-z]{2,})|(\"\s[0-9]{3}\s)/g;
+
+String.prototype.toDate = function() {
+    let middle = this.indexOf(':');
+    if (middle == -1) return this;
+
+    let datePart = this.substr(0, middle);
+    let timePart = this.substr(middle +1);
+
+    const months = ['#nope', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+
+    datePart = datePart.split('/');
+    datePart[1] = months.indexOf(datePart[1]);
+    datePart[1] = datePart[1] < 10 ? '0' + datePart[1] : datePart[1];
+    datePart.reverse();
+    datePart = datePart.join('-');
+
+    let date = new Date(datePart + 'T' + timePart + 'Z');
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+
+    return date;
+};
+
+function parseLine(line) {
+    var matches = line.match(theMightyPattern);
+
+    line = {
+        path: matches[1].substr(4),
+        time: matches[0].toDate(),
+        status: parseInt(matches[2].substr(2))
+    };
+
+    debug(4, 'Load line:', line.time, line.status, line.path);
+    return line;
+}
+
+let stats = {};
+function isValidStatus(status) {
+    return params.success.test(status);
+}
+
+function printStats() {
+    for (let i in stats) {
+        let time = new Date(parseInt(i));
+        const yyyy = time.getFullYear();
+        const mm = time.getMonth() + 1;
+        const dd = time.getDate();
+        const hr = time.getHours();
+        const min = time.getMinutes();
+        const current = [yyyy, mm < 10 ? '0' + mm : mm, dd < 10 ? '0' + dd : dd].join('-') + 'T' + (hr < 10 ? '0' + hr : hr) + ':' + (min < 10 ? '0' + min : min);
+
+        for (let path in stats[i]) {
+            let {valid, total} = stats[i][path];
+            let stat = Math.floor(valid / total * 100 * 100) / 100;
+
+            console.log(current, params.interval, path, stat);
+            delete stats[i][path];
+        }
+
+        delete stats[i];
+    }
+}
+
+function updateStat(path, time, status) {
+    var valid = isValidStatus(status) ? 1 : 0;
+
+    let last = false, done = false;
+    for (let i in stats) {
+        let diff = (time - parseInt(i)) / 1000 / 60;
+
+        if (diff < params.interval) {
+            
+            //First time for this path at this time
+            if (!stats[i][path]) stats[i][path] = {
+                total: 1,
+                valid
+            };
+
+            //2nd+
+            else {
+                stats[i][path].total++;
+                stats[i][path].valid += valid;
+            }
+
+            done = true;
+        }
+
+        last = parseInt(i);
+    }
+
+    if (!done) {
+        stats[time] = {
+            [path]: {
+                total: 1,
+                valid
+            }
+        };
+        done = true;
+    }
+
+    if (last && (time - last) / 1000 / 60 > params.interval)
+        printStats();
+
+    debug(3, done, stats);
+}
+
+
+//Let's have fun
+let reader = readline.createInterface({
+    input: fs.createReadStream(params.file)
+});
+
+reader.on('line', (line) => {
+    line = parseLine(line);
+
+    const current = line.time.getTime();
+    let commited = false;
+
+    if (params.start) {
+        const start = params.start.getTime();
+        
+        if(start > current) return;
+
+        updateStat(line.path, current, line.status);
+        commited = true;
+    }
+
+    if (params.end && params.end.getTime() <= current)
+        return reader.close();
+
+    if (!commited) updateStat(line.path, current, line.status);
+});
+
+reader.on('close', () => {
+    printStats();
+});
