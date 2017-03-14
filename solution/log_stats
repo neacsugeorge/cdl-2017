@@ -9,7 +9,7 @@ var params = {
     file: '',
     start: false,
     end: false,
-    success: '2XX',
+    success: '2xx',
     interval: 1,
     debug: isNaN(DEBUG) ? 0 : DEBUG 
 };
@@ -65,7 +65,7 @@ if (typeof params.success == 'string') {
     var pattern = '';
 
     for (let i = 0; i < split.length; i++) {
-        pattern += '(' + split[i].replace(/X/g, '[0-9]') + ')|';
+        pattern += '(' + split[i].replace(/x/g, '[0-9]') + ')|';
     }
 
     pattern = pattern.substr(0, pattern.length -1);
@@ -113,80 +113,67 @@ function parseLine(line) {
 }
 
 let stats = {};
+let currentStats = false;
 function isValidStatus(status) {
     return params.success.test(status);
 }
 
 function printStats() {
-    for (let i in stats) {
-        let time = new Date(parseInt(i));
-        const yyyy = time.getUTCFullYear();
-        const mm = time.getUTCMonth() + 1;
-        const dd = time.getUTCDate();
-        const hr = time.getUTCHours();
-        const min = time.getUTCMinutes();
-        const current = [yyyy, mm < 10 ? '0' + mm : mm, dd < 10 ? '0' + dd : dd].join('-') + 'T' + (hr < 10 ? '0' + hr : hr) + ':' + (min < 10 ? '0' + min : min);
+    let time = new Date(currentStats);
+    const yyyy = time.getUTCFullYear();
+    const mm = time.getUTCMonth() + 1;
+    const dd = time.getUTCDate();
+    const hr = time.getUTCHours();
+    const min = time.getUTCMinutes();
+    const current = [yyyy, mm < 10 ? '0' + mm : mm, dd < 10 ? '0' + dd : dd].join('-') + 'T' + (hr < 10 ? '0' + hr : hr) + ':' + (min < 10 ? '0' + min : min);
 
-        var now = [];
-        for (let path in stats[i]) {
-            let {valid, total} = stats[i][path];
-            let stat = Math.round(valid / total * 100 * 100) / 100;
+    var now = [];
+    for (let path in stats) {
+        let {valid, total} = stats[path];
+        let stat = Math.round(valid / total * 100 * 100) / 100;
 
-            stat = stat.toFixed(2);
+        stat = stat.toFixed(2);
 
-            now.push([path, stat]);
-            delete stats[i][path];
-        }
-
-        now.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
-        for (let i = 0; i < now.length; i++)
-            console.log(current, params.interval, now[i][0], now[i][1]);
-
-        delete stats[i];
+        now.push([path, stat]);
+        delete stats[path];
     }
+
+    now.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+    for (let i = 0; i < now.length; i++)
+        console.log(current, params.interval, now[i][0], now[i][1]);
+
+    currentStats = false;
 }
 
 function updateStat(path, time, status) {
     var valid = isValidStatus(status) ? 1 : 0;
 
-    let last = false, done = false;
-    for (let i in stats) {
-        let diff = (time - parseInt(i)) / 1000 / 60;
+    if (!currentStats) currentStats = time;
 
-        if (diff < params.interval) {
-            
-            //First time for this path at this time
-            if (!stats[i][path]) stats[i][path] = {
-                total: 1,
-                valid
-            };
+    let diff = (time - currentStats) / 1000 / 60;
 
-            //2nd+
-            else {
-                stats[i][path].total++;
-                stats[i][path].valid += valid;
-            }
+    if (diff < params.interval) {
+        
+        //First time for this path at this time
+        if (!stats[path]) stats[path] = {
+            total: 1,
+            valid
+        };
 
-            done = true;
+        //2nd+
+        else {
+            stats[path].total++;
+            stats[path].valid += valid;
         }
 
-        last = parseInt(i);
     }
 
-    if (!done) {
-        stats[time] = {
-            [path]: {
-                total: 1,
-                valid
-            }
-        };
-        done = true;
+    else {
+        printStats();
+        updateStat(path, time, status);
     }
 
-    // if (last && (time - last) / 1000 / 60 > params.interval)
-    //     printStats();
-
-    debug(3, done, stats);
+    debug(3, currentStats, stats);
 }
 
 
