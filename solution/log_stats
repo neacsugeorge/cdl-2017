@@ -120,9 +120,9 @@ function isValidStatus(status) {
 function printStats() {
     for (let i in stats) {
         let time = new Date(parseInt(i));
-        const yyyy = time.getFullYear();
-        const mm = time.getMonth() + 1;
-        const dd = time.getDate();
+        const yyyy = time.getUTCFullYear();
+        const mm = time.getUTCMonth() + 1;
+        const dd = time.getUTCDate();
         const hr = time.getUTCHours();
         const min = time.getUTCMinutes();
         const current = [yyyy, mm < 10 ? '0' + mm : mm, dd < 10 ? '0' + dd : dd].join('-') + 'T' + (hr < 10 ? '0' + hr : hr) + ':' + (min < 10 ? '0' + min : min);
