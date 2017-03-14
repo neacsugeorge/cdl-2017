@@ -138,9 +138,11 @@ function printStats() {
         delete stats[path];
     }
 
-    now.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
-    for (let i = 0; i < now.length; i++)
-        console.log(current, params.interval, now[i][0], now[i][1]);
+    if (now.length) {
+        now.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+        for (let i = 0; i < now.length; i++)
+            console.log(current, params.interval, now[i][0], now[i][1]);
+    }
 
     currentStats = false;
 }
@@ -150,7 +152,7 @@ function updateStat(path, time, status) {
 
     if (!currentStats) currentStats = time;
 
-    let diff = (time - currentStats) / 1000 / 60;
+    let diff = Math.round((time - currentStats) / 1000 / 60);
 
     if (diff < params.interval) {
         
