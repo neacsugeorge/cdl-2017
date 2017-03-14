@@ -123,13 +123,15 @@ function printStats() {
         const yyyy = time.getFullYear();
         const mm = time.getMonth() + 1;
         const dd = time.getDate();
-        const hr = time.getHours();
-        const min = time.getMinutes();
+        const hr = time.getUTCHours();
+        const min = time.getUTCMinutes();
         const current = [yyyy, mm < 10 ? '0' + mm : mm, dd < 10 ? '0' + dd : dd].join('-') + 'T' + (hr < 10 ? '0' + hr : hr) + ':' + (min < 10 ? '0' + min : min);
 
         for (let path in stats[i]) {
             let {valid, total} = stats[i][path];
             let stat = Math.floor(valid / total * 100 * 100) / 100;
+
+            stat = (parseInt(stat) == stat) ? stat + '.00' : stat;
 
             console.log(current, params.interval, path, stat);
             delete stats[i][path];
