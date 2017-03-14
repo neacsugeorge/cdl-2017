@@ -84,7 +84,7 @@ String.prototype.toDate = function() {
     let datePart = this.substr(0, middle);
     let timePart = this.substr(middle +1);
 
-    const months = ['#nope', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+    const months = ['#nope', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     datePart = datePart.split('/');
     datePart[1] = months.indexOf(datePart[1]);
@@ -183,8 +183,8 @@ function updateStat(path, time, status) {
         done = true;
     }
 
-    if (last && (time - last) / 1000 / 60 > params.interval)
-        printStats();
+    // if (last && (time - last) / 1000 / 60 > params.interval)
+    //     printStats();
 
     debug(3, done, stats);
 }
