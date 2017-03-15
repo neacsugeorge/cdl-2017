@@ -32,3 +32,7 @@ Pentru a instala node.js pe un container de docker cu `Ubuntu 16.04`, au fost ne
 
 Am testat folosind `node.js v6.10.0` si `node.js v7.7.3`.
 Testele au fost realizate pe `Ubuntu 16.04 - desktop` si `Ubuntu 16.04 - docker container`.
+
+## Autor ##
+
+George Neacsu - [geo997@gmail.com](mail:geo997@gmail.com)
