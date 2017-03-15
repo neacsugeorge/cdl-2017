@@ -1,10 +1,11 @@
 {
   "name": "cdl-gn-parser",
   "version": "1.0.0",
-  "description": "Solution for CDL problem",
-  "main": "index.js",
+  "description": "Solution for the CDL problem",
+  "main": "log_stats",
   "scripts": {
-    "test": "node logStats.js"
+    "test": "node log_stats",
+    "install": "chmod +x ./log_stats"
   },
   "keywords": [
     "cdl",
