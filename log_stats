@@ -112,14 +112,37 @@ function parseLine(line) {
     return line;
 }
 
-let stats = {};
-let currentStats = false;
+let statsByPath = {};
+let statsByStart = {};
+let lastReadTime = false;
+/**
+ * total - int - number of requests
+ * valid - bool - valid statuses
+ * start - date - beginning of interval
+ * [start, total, valid]
+ */
+const START = 0, TOTAL = 1, VALID = 2;
+
+
+function sameTime(a, b) {
+    return parseInt(a) == parseInt(b);
+}
+
+function isInInterval(start, now) {
+    start = parseInt(start);
+    now = parseInt(now);
+
+    if (isNaN(start) || isNaN(now)) return true;
+
+    return (now - start) / 1000 / 60 < params.interval;
+}
+
 function isValidStatus(status) {
     return params.success.test(status);
 }
 
-function printStats() {
-    let time = new Date(currentStats);
+Number.prototype.toTimestamp = function() {
+    let time = new Date(this);
     const yyyy = time.getUTCFullYear();
     const mm = time.getUTCMonth() + 1;
     const dd = time.getUTCDate();
@@ -127,55 +150,68 @@ function printStats() {
     const min = time.getUTCMinutes();
     const current = [yyyy, mm < 10 ? '0' + mm : mm, dd < 10 ? '0' + dd : dd].join('-') + 'T' + (hr < 10 ? '0' + hr : hr) + ':' + (min < 10 ? '0' + min : min);
 
-    var now = [];
-    for (let path in stats) {
-        let {valid, total} = stats[path];
-        let stat = Math.round(valid / total * 100 * 100) / 100;
+    return current;
+};
+String.prototype.toTimestamp = function() {
+    let number = parseInt(this);
+    if (isNaN(number)) return false;
 
-        stat = stat.toFixed(2);
+    return number.toTimestamp();
+};
 
-        now.push([path, stat]);
-        delete stats[path];
+function printStats(last) {
+    let output = [];
+    for (let time in statsByStart) {
+        if (isInInterval(time, lastReadTime) && !last) return;
+        output = [];
+
+        for (let path in statsByStart[time]) {
+            let valid = statsByPath[path][VALID];
+            let total = statsByPath[path][TOTAL];
+
+            let stat = Math.round(valid / total * 100 * 100) / 100;
+            stat = stat.toFixed(2);
+
+            output.push([path, stat]);
+            delete statsByPath[path];
+        }
+
+        if (!output.length) return;
+
+        output.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+        output.forEach((one) => console.log(time.toTimestamp(), params.interval, one[0], one[1]));
+
+        delete statsByStart[time];
     }
 
-    if (now.length) {
-        now.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
-        for (let i = 0; i < now.length; i++)
-            console.log(current, params.interval, now[i][0], now[i][1]);
-    }
-
-    currentStats = false;
 }
 
 function updateStat(path, time, status) {
+    printStats();
+
     var valid = isValidStatus(status) ? 1 : 0;
-
-    if (!currentStats) currentStats = time;
-
-    let diff = Math.round((time - currentStats) / 1000 / 60);
-
-    if (diff < params.interval) {
-        
-        //First time for this path at this time
-        if (!stats[path]) stats[path] = {
-            total: 1,
-            valid
-        };
-
-        //2nd+
-        else {
-            stats[path].total++;
-            stats[path].valid += valid;
-        }
-
+    debug(3, 'Update:', path, time, status);
+    debug(3, 'Before:', statsByStart);
+    
+    let found = true;
+    let current = false;
+    current = statsByPath[path];
+    if (!current) {
+        current = [time, 0, 0];
+        found = false;
     }
 
-    else {
-        printStats();
-        updateStat(path, time, status);
+    current[TOTAL]++;
+    current[VALID]+= valid;
+
+    statsByPath[path] = current;
+    if (!found) {
+        if (!statsByStart[time]) statsByStart[time] = {};
+
+        statsByStart[time][path] = current;
     }
 
-    debug(3, currentStats, stats);
+    debug(3, 'After:', statsByStart);
 }
 
 
@@ -189,6 +225,7 @@ reader.on('line', (line) => {
 
     const current = line.time.getTime();
     let commited = false;
+    lastReadTime = current;
 
     if (params.start) {
         const start = params.start.getTime();
@@ -206,5 +243,6 @@ reader.on('line', (line) => {
 });
 
 reader.on('close', () => {
-    printStats();
+    printStats(true);
+    debug(3, 'Reader closed');
 });
