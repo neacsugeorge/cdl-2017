@@ -52,9 +52,9 @@ function parseArgs() {
 }
 
 parseArgs();
-debug(5, process.argv);
+// debug(5, process.argv);
 
-debug(5, params);
+// debug(5, params);
 
 //Prepare params
 if (params.start) params.start = new Date(params.start + ':00');
@@ -107,7 +107,7 @@ function parseLine(line) {
         status: parseInt(matches[2].substr(2))
     };
 
-    debug(4, 'Load line:', line.time, line.status, line.path);
+    // debug(4, 'Load line:', line.time, line.status, line.path);
     return line;
 }
 
@@ -141,6 +141,7 @@ function isValidStatus(status) {
 }
 
 Number.prototype.toTimestamp = function() {
+    return new Date(this).toISOString().substr(0, 16);
     let time = new Date(this);
     const yyyy = time.getUTCFullYear();
     const mm = time.getUTCMonth() + 1;
@@ -178,7 +179,8 @@ function printStats(last) {
         if (!output.length) return;
 
         output.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
-        output.forEach((one) => console.log(time.toTimestamp(), params.interval, one[0], one[1]));
+        for(let one of output)
+            console.log(time.toTimestamp(), params.interval, one[0], one[1]);
 
         delete statsByStart[time];
     }
@@ -189,8 +191,8 @@ function updateStat(path, time, status) {
     printStats();
 
     var valid = isValidStatus(status) ? 1 : 0;
-    debug(3, 'Update:', path, time, status);
-    debug(3, 'Before:', statsByStart);
+    // debug(3, 'Update:', path, time, status);
+    // debug(3, 'Before:', statsByStart);
     
     let found = true;
     let current = false;
@@ -210,7 +212,7 @@ function updateStat(path, time, status) {
         statsByStart[time][path] = current;
     }
 
-    debug(3, 'After:', statsByStart);
+    // debug(3, 'After:', statsByStart);
 }
 
 
@@ -243,5 +245,5 @@ reader.on('line', (line) => {
 
 reader.on('close', () => {
     printStats(true);
-    debug(3, 'Reader closed');
+    // debug(3, 'Reader closed');
 });
