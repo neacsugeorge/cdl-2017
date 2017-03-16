@@ -3,25 +3,13 @@
 const fs = require('fs');
 const readline = require('readline');
 
-const DEBUG = parseInt(process.env.CDL_DEBUG);
-
 var params = {
     file: '',
     start: false,
     end: false,
     success: '2xx',
-    interval: 1,
-    debug: isNaN(DEBUG) ? 0 : DEBUG 
+    interval: 1
 };
-
-function debug () {
-    if (!params.debug) return;
-
-    if (arguments[0] > params.debug) return;
-    arguments[0] = '';
-
-    console.log.apply({}, arguments);
-}
 
 function parseArgs() {
     let {argv} = process;
@@ -52,13 +40,10 @@ function parseArgs() {
 }
 
 parseArgs();
-// debug(5, process.argv);
-
-// debug(5, params);
 
 //Prepare params
-if (params.start) params.start = new Date(params.start + ':00');
-if (params.end) params.end = new Date(params.end + ':00');
+if (params.start) params.start = new Date(params.start + ':00').getTime();
+if (params.end) params.end = new Date(params.end + ':00').getTime();
 params.interval = parseInt(params.interval);
 if (typeof params.success == 'string') {
     var split = params.success.split(',');
@@ -75,7 +60,7 @@ if (typeof params.success == 'string') {
 //First group - timestamp
 //Second group - request
 //Third group - status code
-const theMightyPattern = /(([0-9]{2}\/[a-zA-Z]{3,4}\/[0-9]{4}\:([0-9\:]{2,3}){2}[0-9]{2}))|(GET\s\/[a-zA-Z0-9\-\_\/]+\.[a-z]{2,})|(\"\s[0-9]{3}\s)/g;
+const theMightyPattern = /(([0-9]{2}\/[a-zA-Z]{3,4}\/[0-9]{4}\:([0-9\:]{2,3}){2}[0-9]{2}))|(?:GET\s)(\/[a-zA-Z0-9\-\_\/]+\.[a-z]{2,})|(?:\"\s)([0-9]{3})(?:\s)/g;
 
 String.prototype.toDate = function() {
     let middle = this.indexOf(':');
@@ -103,11 +88,10 @@ function parseLine(line) {
 
     line = {
         path: matches[1].substr(4),
-        time: matches[0].toDate(),
+        time: matches[0].toDate().getTime(),
         status: parseInt(matches[2].substr(2))
     };
 
-    // debug(4, 'Load line:', line.time, line.status, line.path);
     return line;
 }
 
@@ -142,21 +126,9 @@ function isValidStatus(status) {
 
 Number.prototype.toTimestamp = function() {
     return new Date(this).toISOString().substr(0, 16);
-    let time = new Date(this);
-    const yyyy = time.getUTCFullYear();
-    const mm = time.getUTCMonth() + 1;
-    const dd = time.getUTCDate();
-    const hr = time.getUTCHours();
-    const min = time.getUTCMinutes();
-    const current = [yyyy, mm < 10 ? '0' + mm : mm, dd < 10 ? '0' + dd : dd].join('-') + 'T' + (hr < 10 ? '0' + hr : hr) + ':' + (min < 10 ? '0' + min : min);
-
-    return current;
 };
 String.prototype.toTimestamp = function() {
-    let number = parseInt(this);
-    if (isNaN(number)) return false;
-
-    return number.toTimestamp();
+    return parseInt(this).toTimestamp();
 };
 
 function printStats(last) {
@@ -191,8 +163,6 @@ function updateStat(path, time, status) {
     printStats();
 
     var valid = isValidStatus(status) ? 1 : 0;
-    // debug(3, 'Update:', path, time, status);
-    // debug(3, 'Before:', statsByStart);
     
     let found = true;
     let current = false;
@@ -212,7 +182,6 @@ function updateStat(path, time, status) {
         statsByStart[time][path] = current;
     }
 
-    // debug(3, 'After:', statsByStart);
 }
 
 
@@ -224,12 +193,12 @@ let reader = readline.createInterface({
 reader.on('line', (line) => {
     line = parseLine(line);
 
-    const current = line.time.getTime();
+    const current = line.time;
     let commited = false;
     lastReadTime = current;
 
     if (params.start) {
-        const start = params.start.getTime();
+        const start = params.start;
         
         if(start > current) return;
 
@@ -237,7 +206,7 @@ reader.on('line', (line) => {
         commited = true;
     }
 
-    if (params.end && params.end.getTime() <= current)
+    if (params.end && params.end <= current)
         return reader.close();
 
     if (!commited) updateStat(line.path, current, line.status);
@@ -245,5 +214,4 @@ reader.on('line', (line) => {
 
 reader.on('close', () => {
     printStats(true);
-    // debug(3, 'Reader closed');
 });
