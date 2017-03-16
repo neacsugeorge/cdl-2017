@@ -62,6 +62,11 @@ if (typeof params.success == 'string') {
 //Third group - status code
 var theMightyPattern = /(([0-9]{2}\/[a-zA-Z]{3,4}\/[0-9]{4}\:([0-9\:]{2,3}){2}[0-9]{2}))|(?:GET\s)(\/[a-zA-Z0-9\-\_\/]+\.[a-z]{2,})|(?:\"\s)([0-9]{3})(?:\s)/g;
 var timePattern = /([0-9]{2})\/([a-zA-Z]{3})\/([0-9]{4})(:)([0-9]{2}\:[0-9]{2})/;
+var patterns = [
+    /(([0-9]{2}\/[a-zA-Z]{3,4}\/[0-9]{4}\:([0-9\:]{2,3}){2}[0-9]{2}))/, // Timestamp
+    /(?:GET\s)(\/[a-zA-Z0-9\-\_\/]+\.[a-z]{2,})/, // Path
+    /(?:\"\s)([0-9]{3})(?:\s)/ // Status Code
+];
 
 var months = ['#nope', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 var mindfuck = ['#nope', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
@@ -71,13 +76,23 @@ String.prototype.toDate = function() {
 };
 
 function parseLine(line) {
-    var matches = line.match(theMightyPattern);
+    // Method #1
+    // var matches = line.match(theMightyPattern);
 
+    // line = {
+    //     path: matches[1].substr(4),
+    //     time: matches[0].toDate().getTime(),
+    //     status: parseInt(matches[2].substr(2))
+    // };
+    // End of method #1
+
+    // Method #2
     line = {
-        path: matches[1].substr(4),
-        time: matches[0].toDate().getTime(),
-        status: parseInt(matches[2].substr(2))
-    };
+        path: patterns[1].exec(line)[1],
+        time: patterns[0].exec(line)[0].toDate().getTime(),
+        status: parseInt(patterns[2].exec(line)[1])
+    }
+    // End of method #2
 
     return line;
 }
