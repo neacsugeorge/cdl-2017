@@ -61,26 +61,13 @@ if (typeof params.success == 'string') {
 //Second group - request
 //Third group - status code
 var theMightyPattern = /(([0-9]{2}\/[a-zA-Z]{3,4}\/[0-9]{4}\:([0-9\:]{2,3}){2}[0-9]{2}))|(?:GET\s)(\/[a-zA-Z0-9\-\_\/]+\.[a-z]{2,})|(?:\"\s)([0-9]{3})(?:\s)/g;
+var timePattern = /([0-9]{2})\/([a-zA-Z]{3})\/([0-9]{4})(:)([0-9]{2}\:[0-9]{2})/;
 
+var months = ['#nope', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var mindfuck = ['#nope', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
 String.prototype.toDate = function() {
-    var middle = this.indexOf(':');
-    if (middle == -1) return this;
-
-    var datePart = this.substr(0, middle);
-    var timePart = this.substr(middle +1);
-
-    var months = ['#nope', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    datePart = datePart.split('/');
-    datePart[1] = months.indexOf(datePart[1]);
-    datePart[1] = datePart[1] < 10 ? '0' + datePart[1] : datePart[1];
-    datePart = datePart[2] + '-' + datePart[1] + '-' + datePart[0];
-
-    var date = new Date(datePart + 'T' + timePart + 'Z');
-    date.setSeconds(0);
-    date.setMilliseconds(0);
-
-    return date;
+    var explode = timePattern.exec(this);
+    return new Date(explode[3] + '-' + mindfuck[months.indexOf(explode[2])] + '-' + explode[1] + 'T' + explode[5] + ':00');
 };
 
 function parseLine(line) {
