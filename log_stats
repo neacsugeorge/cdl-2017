@@ -89,8 +89,7 @@ String.prototype.toDate = function() {
     datePart = datePart.split('/');
     datePart[1] = months.indexOf(datePart[1]);
     datePart[1] = datePart[1] < 10 ? '0' + datePart[1] : datePart[1];
-    datePart.reverse();
-    datePart = datePart.join('-');
+    datePart = datePart[2] + '-' + datePart[1] + '-' + datePart[0];
 
     let date = new Date(datePart + 'T' + timePart + 'Z');
     date.setSeconds(0);
